@@ -1,5 +1,6 @@
 import RoyCard from "@/card/RoyCard";
 import PatrickStarCard from "@/card/PatrickStarCard";
+import WesleyCard from "@/card/WesleyCard";
 
 export default function Home() {
   return (
@@ -7,7 +8,7 @@ export default function Home() {
       <RoyCard />
       <PatrickStarCard />
       <RoyCard />
-      <RoyCard />
+      <WesleyCard />
     </div>
   );
 }
