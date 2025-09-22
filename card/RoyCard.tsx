@@ -13,10 +13,10 @@ export default function RoyCard() {
           <p className="text-xl">盧柏宇</p>
         </Typography>
         <Typography className="text-red-700 text-center">
-          <p className="text-xl">興趣：看動漫、打遊戲</p>
+          <p className="text-xl">興趣：看動漫、打遊戲、3d列印</p>
         </Typography>
         <Typography className="text-yellow-700 text-center">
-            <p className="text-xl">專長：艾爾登全成就</p>
+            <p className="text-xl">專長：艾爾登全成就 空洞騎士被虐玩家</p>
         </Typography>
       </CardContent>
     </Card>
