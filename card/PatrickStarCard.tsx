@@ -13,7 +13,7 @@ export default function PatrickStarCard() {
           <p className="text-xl">劉惟恩</p>
         </Typography>
         <Typography className="text-red-700 text-center">
-          <p className="text-xl">興趣：看動漫、打遊戲</p>
+          <p className="text-xl">興趣：看動漫、打遊戲1</p>
         </Typography>
         <Typography className="text-yellow-700 text-center">
             <p className="text-xl">專長：睡覺</p>
