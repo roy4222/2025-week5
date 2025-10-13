@@ -1,7 +1,9 @@
 import Link from "next/link";
+import Navbar from "../navbar";
 export default function Animate() {
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-white">
+    <div className="flex flex-col h-screen bg-white">
+      <Navbar />
       <h1>Animate</h1>
       <Link href="/" className="bg-blue-500 text-white p-2 rounded-md">
         go to home

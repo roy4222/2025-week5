@@ -1,20 +1,12 @@
-import Link from "next/link";
-
+import Navbar from "./navbar";
 export default function Home() {
-  const links = [
-    { href: "/product", text: "Product" },
-    { href: "/customer", text: "Customer" },
-    { href: "/animate", text: "Animate" },
-    { href: "/store", text: "Store" },
-  ];
 
   return (
-    <div className="flex justify-center items-center h-screen gap-4 bg-white">
-      {links.map((link) => (
-        <Link key={link.href} className="text-blue-500" href={link.href}>
-          {link.text}
-        </Link>
-      ))}
+    <div className="flex flex-col h-screen bg-white">
+      <Navbar/>
+      <main className="flex-1 flex justify-center items-center">
+        <h1 className="text-2xl font-bold">Welcome</h1>
+      </main>
     </div>
   );
 }
