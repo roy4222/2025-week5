@@ -9,7 +9,7 @@ export default function Navbar() {
     { href: "/store", text: "Store" },
   ];
   return (
-    <nav className="flex gap-4  bg-gray-100 p-4 shadow-md">
+    <nav className="flex gap-4 justify-center bg-gray-100 p-4 shadow-md">
     {links.map((link) => (
       <Link key={link.href} className="text-blue-500 hover:text-blue-700" href={link.href}>
         {link.text}
