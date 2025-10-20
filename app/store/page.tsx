@@ -1,31 +1,38 @@
 // 為了使用 MUI 元件，我們需要宣告這是一個 Client Component
 "use client";
 
+import { useState } from 'react';
 import Link from "next/link";
-import Navbar from "../navbar"; // 假設 Navbar 元件路徑
+import Navbar from "../navbar";
 
 // 引入 Material-UI 元件
-import { 
-  Box, 
-  Container, 
-  Grid, 
-  Card, 
-  CardMedia, 
-  CardContent, 
-  Typography, 
-  CardActions, 
-  Button 
+import {
+  Box,
+  Container,
+  Grid,
+  Card,
+  CardMedia,
+  CardContent,
+  Typography,
+  CardActions,
+  Button,
+  TextField, // 1. 引入 TextField
 } from '@mui/material';
-import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart'; // 引入購物車圖示
+import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import EditIcon from '@mui/icons-material/Edit'; // 引入編輯圖示
+import SaveIcon from '@mui/icons-material/Save';   // 引入儲存圖示
+import CancelIcon from '@mui/icons-material/Cancel'; // 引入取消圖示
 
-// 1. 新增四個產品的陣列
-const products = [
+
+const initialProducts = [
+  // ... (初始產品資料與之前相同，此處省略)
   {
     id: "p001",
     name: "高效能筆記型電腦",
     description: "搭載最新處理器，適合專業人士與遊戲玩家。",
     price: 35000,
-    imageUrl: "https://via.placeholder.com/300?text=Laptop", // 範例圖片 URL
+    imageUrl: "https://via.placeholder.com/300?text=Laptop",
   },
   {
     id: "p002",
@@ -51,23 +58,66 @@ const products = [
 ];
 
 export default function Store() {
+  const [products, setProducts] = useState(initialProducts);
+  // 2. 新增 state 來管理編輯狀態
+  const [editingProductId, setEditingProductId] = useState(null); // 正在編輯的產品ID
+  const [editedProduct, setEditedProduct] = useState(null); // 正在編輯的產品的暫存資料
+
+  const handleAddProduct = () => {
+    // ... (新增產品函式不變)
+    const newProduct = {
+      id: `p${Date.now()}`,
+      name: "全新商品",
+      description: "這是一個動態新增的商品項目。",
+      price: Math.floor(Math.random() * 5000) + 1000,
+      imageUrl: `https://via.placeholder.com/300?text=New+Item`,
+    };
+    setProducts(prevProducts => [...prevProducts, newProduct]);
+  };
+
+  // 3. 處理 "編輯" 按鈕點擊
+  const handleEdit = (product) => {
+    setEditingProductId(product.id);
+    setEditedProduct({ ...product }); // 複製一份產品資料到暫存 state
+  };
+
+  // 4. 處理 "儲存" 按鈕點擊
+  const handleSave = (productId) => {
+    setProducts(currentProducts =>
+      currentProducts.map(p => (p.id === productId ? editedProduct : p))
+    );
+    setEditingProductId(null); // 結束編輯模式
+    setEditedProduct(null);
+  };
+  
+  // 5. 處理 "取消" 按鈕點擊
+  const handleCancel = () => {
+    setEditingProductId(null); // 直接結束編輯模式
+    setEditedProduct(null);
+  };
+
+  // 6. 處理輸入框內容變更
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditedProduct(prev => ({
+      ...prev,
+      // 如果欄位是 price，確保存為數字
+      [name]: name === 'price' ? parseFloat(value) || 0 : value
+    }));
+  };
+
   return (
     <Box sx={{ flexGrow: 1, bgcolor: 'background.default' }}>
       <Navbar />
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          商品列表
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          {/* ... (標題和新增商品按鈕不變) */}
+          <Typography variant="h4" component="h1">商品列表</Typography>
+          <Button variant="contained" startIcon={<AddCircleOutlineIcon />} onClick={handleAddProduct}>新增商品</Button>
+        </Box>
 
-        {/* 使用 Grid 容器來排列產品卡片 */}
         <Grid container spacing={4}>
-          {/* 2. 使用 .map() 將陣列渲染成 MUI Card */}
           {products.map((product) => (
-            // Grid item: 設定在不同螢幕尺寸下的欄位寬度
-            // xs={12}: 手機(最小)佔滿12欄 (1個一行)
-            // sm={6}: 平板(small)佔6欄 (2個一行)
-            // md={4}: 中等螢幕(medium)佔4欄 (3個一行)
-            // lg={3}: 大螢幕(large)佔3欄 (4個一行)
             <Grid item key={product.id} xs={12} sm={6} md={4} lg={3}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardMedia
@@ -76,22 +126,38 @@ export default function Store() {
                   image={product.imageUrl}
                   alt={product.name}
                 />
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography gutterBottom variant="h5" component="h2">
-                    {product.name}
-                  </Typography>
-                  <Typography>
-                    {product.description}
-                  </Typography>
-                  <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
-                    NT$ {product.price.toLocaleString()}
-                  </Typography>
-                </CardContent>
+                {/* 7. 條件渲染：根據是否在編輯模式顯示不同內容 */}
+                {editingProductId === product.id ? (
+                  // ----- 編輯模式 -----
+                  <CardContent sx={{ flexGrow: 1, p: 2, '& .MuiTextField-root': { mb: 2 } }}>
+                    <TextField label="商品名稱" name="name" value={editedProduct.name} onChange={handleInputChange} fullWidth/>
+                    <TextField label="商品描述" name="description" value={editedProduct.description} onChange={handleInputChange} fullWidth multiline rows={3}/>
+                    <TextField label="價格" name="price" type="number" value={editedProduct.price} onChange={handleInputChange} fullWidth/>
+                  </CardContent>
+                ) : (
+                  // ----- 正常顯示模式 -----
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography gutterBottom variant="h5" component="h2">{product.name}</Typography>
+                    <Typography>{product.description}</Typography>
+                    <Typography variant="h6" color="primary" sx={{ mt: 2 }}>NT$ {product.price.toLocaleString()}</Typography>
+                  </CardContent>
+                )}
+                
+                {/* 8. 條件渲染：根據是否在編輯模式顯示不同按鈕 */}
                 <CardActions>
-                  <Button size="small" startIcon={<AddShoppingCartIcon />}>
-                    加入購物車
-                  </Button>
-                  <Button size="small">查看詳情</Button>
+                  {editingProductId === product.id ? (
+                    // ----- 編輯模式按鈕 -----
+                    <>
+                      <Button size="small" startIcon={<SaveIcon />} onClick={() => handleSave(product.id)} color="primary">儲存</Button>
+                      <Button size="small" startIcon={<CancelIcon />} onClick={handleCancel} color="inherit">取消</Button>
+                    </>
+                  ) : (
+                    // ----- 正常顯示模式按鈕 -----
+                    <>
+                      <Button size="small" startIcon={<AddShoppingCartIcon />}>加入購物車</Button>
+                      <Button size="small" startIcon={<EditIcon />} onClick={() => handleEdit(product)}>編輯</Button>
+                    </>
+                  )}
                 </CardActions>
               </Card>
             </Grid>
@@ -99,9 +165,7 @@ export default function Store() {
         </Grid>
 
         <Link href="/" style={{ textDecoration: 'none', marginTop: '32px', display: 'inline-block' }}>
-          <Button variant="contained">
-            回到首頁
-          </Button>
+          <Button variant="contained">回到首頁</Button>
         </Link>
       </Container>
     </Box>
