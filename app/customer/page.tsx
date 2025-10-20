@@ -2,6 +2,16 @@
 
 import React, { useState } from "react";
 import Navbar from "../navbar";
+import {
+  Fab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 
 type Game = {
   id: number;
@@ -20,13 +30,26 @@ export default function Animate() {
     { id: 6, title: "飢荒", genre: "沙盒生存", rating: 8.4 },
   ]);
 
+  const [openDialog, setOpenDialog] = useState(false);
   const [title, setTitle] = useState("");
   const [genre, setGenre] = useState("");
   const [rating, setRating] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
-  function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
+  const handleOpenDialog = () => {
+    setTitle("");
+    setGenre("");
+    setRating("");
+    setError(null);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setError(null);
+  };
+
+  function handleAdd() {
     setError(null);
 
     if (!title.trim() || !genre.trim() || rating === "") {
@@ -44,68 +67,88 @@ export default function Animate() {
     const newItem: Game = { id: nextId, title: title.trim(), genre: genre.trim(), rating: parsed };
     setItems((prev) => [newItem, ...prev]);
 
-    // reset
+    // reset and close
     setTitle("");
     setGenre("");
     setRating("");
+    setOpenDialog(false);
   }
 
   return (
     <div className="flex flex-col h-screen bg-white">
       <Navbar />
       <div className="flex-grow p-4">
-        <h1 className="text-3xl font-bold mb-3 text-center text-gray-600">遊戲推薦</h1>
-
-        <form className="max-w-2xl mx-auto mb-6 p-4 bg-gray-50 rounded" onSubmit={handleAdd}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <input
-              aria-label="title"
-              className="p-2 border rounded"
-              placeholder="Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <input
-              aria-label="genre"
-              className="p-2 border rounded"
-              placeholder="Genre"
-              value={genre}
-              onChange={(e) => setGenre(e.target.value)}
-            />
-            <input
-              aria-label="rating"
-              className="p-2 border rounded"
-              placeholder="Rating (0-10)"
-              value={rating}
-              onChange={(e) => setRating(e.target.value)}
-            />
-          </div>
-          <div className="mt-3 flex items-center justify-between">
-            <div className="text-sm text-red-600">{error}</div>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              新增
-            </button>
-          </div>
-        </form>
+        <h1 className="text-3xl font-bold mb-6 text-center text-gray-600">遊戲推薦</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((anime) => (
-            <div key={anime.id}>
+          {items.map((game) => (
+            <div key={game.id}>
               <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow h-full">
-                <h2 className="text-xl text-gray-600 font-semibold mb-2">{anime.title}</h2>
-                <p className="text-gray-600 mb-2">類型: {anime.genre}</p>
+                <h2 className="text-xl text-gray-600 font-semibold mb-2">{game.title}</h2>
+                <p className="text-gray-600 mb-2">類型: {game.genre}</p>
                 <div className="flex items-center">
                   <span className="text-yellow-500 text-lg">★</span>
-                  <span className="ml-1 text-gray-700">{anime.rating}</span>
+                  <span className="ml-1 text-gray-700">{game.rating}</span>
                 </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* FAB 按鈕 */}
+      <Fab
+        color="primary"
+        aria-label="add"
+        sx={{ position: "fixed", bottom: 16, right: 16 }}
+        onClick={handleOpenDialog}
+      >
+        <AddIcon />
+      </Fab>
+
+      {/* Dialog 新增視窗 */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>新增遊戲</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="遊戲名稱"
+            type="text"
+            fullWidth
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Title"
+          />
+          <TextField
+            margin="dense"
+            label="類型"
+            type="text"
+            fullWidth
+            value={genre}
+            onChange={(e) => setGenre(e.target.value)}
+            placeholder="Genre"
+          />
+          <TextField
+            margin="dense"
+            label="評分 (0-10)"
+            type="text"
+            fullWidth
+            value={rating}
+            onChange={(e) => setRating(e.target.value)}
+            placeholder="Rating (0-10)"
+          />
+          {error && (
+            <div className="text-sm text-red-600 mt-2">{error}</div>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>取消</Button>
+          <Button onClick={handleAdd} variant="contained">
+            新增
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

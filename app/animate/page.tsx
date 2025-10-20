@@ -2,6 +2,16 @@
 
 import { useState } from "react";
 import Navbar from "../navbar";
+import {
+  Fab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 
 interface Anime {
   id: number;
@@ -20,22 +30,50 @@ export default function Animate() {
     { id: 6, title: "我推的孩子", genre: "劇情", rating: 8.4 },
   ]);
 
-  const addNewAnime = () => {
-    const newAnime: Anime = {
-      id: Date.now(), // 使用時間戳確保唯一 ID
-      title: "新動漫",
-      genre: "未分類",
-      rating: 0.0,
-    };
-    setAnimes([...animes, newAnime]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editingAnime, setEditingAnime] = useState<Anime | null>(null);
+  const [formData, setFormData] = useState<Anime>({
+    id: 0,
+    title: "",
+    genre: "",
+    rating: 0,
+  });
+
+  const handleOpenAddDialog = () => {
+    setEditingAnime(null);
+    setFormData({
+      id: Date.now(),
+      title: "",
+      genre: "",
+      rating: 0,
+    });
+    setOpenDialog(true);
   };
 
-  const updateAnime = (id: number, field: keyof Anime, value: string | number) => {
-    setAnimes(
-      animes.map((anime) =>
-        anime.id === id ? { ...anime, [field]: value } : anime
-      )
-    );
+  const handleOpenEditDialog = (anime: Anime) => {
+    setEditingAnime(anime);
+    setFormData({ ...anime });
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setEditingAnime(null);
+  };
+
+  const handleSave = () => {
+    if (editingAnime) {
+      // 編輯現有動漫
+      setAnimes(animes.map((anime) => (anime.id === editingAnime.id ? formData : anime)));
+    } else {
+      // 新增動漫
+      setAnimes([...animes, formData]);
+    }
+    handleCloseDialog();
+  };
+
+  const handleInputChange = (field: keyof Anime, value: string | number) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   
@@ -43,66 +81,82 @@ export default function Animate() {
     <div className="flex flex-col h-screen bg-white">
       <Navbar />
       <div className="flex-grow p-4 overflow-auto">
-        <div className="flex justify-between items-center mb-3">
-          <h1 className="text-3xl font-bold text-center text-gray-600 flex-grow">
-            動漫推薦
-          </h1>
-          <button
-            onClick={addNewAnime}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
-          >
-            ➕ 新增卡片
-          </button>
-        </div>
+        <h1 className="text-3xl font-bold text-center text-gray-600 mb-6">
+          動漫推薦
+        </h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {animes.map((anime) => (
-            <div key={anime.id}>
-              <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow h-full relative">
-
-                {/* 標題輸入框 */}
-                <input
-                  type="text"
-                  value={anime.title}
-                  onChange={(e) => updateAnime(anime.id, "title", e.target.value)}
-                  className="text-xl text-gray-600 font-semibold mb-2 w-full border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none transition-colors"
-                  placeholder="動漫名稱"
-                />
-
-                {/* 類型輸入框 */}
-                <div className="flex items-center mb-2">
-                  <span className="text-gray-600 mr-2">類型:</span>
-                  <input
-                    type="text"
-                    value={anime.genre}
-                    onChange={(e) => updateAnime(anime.id, "genre", e.target.value)}
-                    className="text-gray-600 flex-grow border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none transition-colors"
-                    placeholder="類型"
-                  />
-                </div>
-
-                {/* 評分輸入框 */}
-                <div className="flex items-center">
-                  <span className="text-yellow-500 text-lg mr-1">★</span>
-                  <input
-                    type="number"
-                    value={anime.rating}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      if (!isNaN(value) && value >= 0 && value <= 10) {
-                        updateAnime(anime.id, "rating", value);
-                      }
-                    }}
-                    min="0"
-                    max="10"
-                    step="1"
-                    className="ml-1 text-gray-700 w-16 border-b-2 border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none transition-colors"
-                  />
-                </div>
+            <div
+              key={anime.id}
+              className="bg-white border border-gray-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow h-full cursor-pointer"
+              onClick={() => handleOpenEditDialog(anime)}
+            >
+              <h2 className="text-xl text-gray-600 font-semibold mb-2">
+                {anime.title}
+              </h2>
+              <p className="text-gray-600 mb-2">類型: {anime.genre}</p>
+              <div className="flex items-center">
+                <span className="text-yellow-500 text-lg">★</span>
+                <span className="ml-1 text-gray-700">{anime.rating}</span>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* FAB 按鈕 */}
+      <Fab
+        color="primary"
+        aria-label="add"
+        sx={{ position: "fixed", bottom: 16, right: 16 }}
+        onClick={handleOpenAddDialog}
+      >
+        <AddIcon />
+      </Fab>
+
+      {/* Dialog 編輯視窗 */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingAnime ? "編輯動漫" : "新增動漫"}</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="動漫名稱"
+            type="text"
+            fullWidth
+            value={formData.title}
+            onChange={(e) => handleInputChange("title", e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="類型"
+            type="text"
+            fullWidth
+            value={formData.genre}
+            onChange={(e) => handleInputChange("genre", e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="評分 (0-10)"
+            type="number"
+            fullWidth
+            value={formData.rating}
+            onChange={(e) => {
+              const value = parseFloat(e.target.value);
+              if (!isNaN(value) && value >= 0 && value <= 10) {
+                handleInputChange("rating", value);
+              }
+            }}
+            inputProps={{ min: 0, max: 10, step: 0.1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>取消</Button>
+          <Button onClick={handleSave} variant="contained">
+            儲存
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

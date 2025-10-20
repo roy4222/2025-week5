@@ -9,20 +9,22 @@ import Navbar from "../navbar";
 import {
   Box,
   Container,
-  Grid,
   Card,
   CardMedia,
   CardContent,
   Typography,
   CardActions,
   Button,
-  TextField, // 1. 引入 TextField
+  TextField,
+  Fab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import EditIcon from '@mui/icons-material/Edit'; // 引入編輯圖示
-import SaveIcon from '@mui/icons-material/Save';   // 引入儲存圖示
-import CancelIcon from '@mui/icons-material/Cancel'; // 引入取消圖示
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
 
 
 const initialProducts = [
@@ -57,49 +59,70 @@ const initialProducts = [
   },
 ];
 
+type Product = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+};
+
 export default function Store() {
   const [products, setProducts] = useState(initialProducts);
-  // 2. 新增 state 來管理編輯狀態
-  const [editingProductId, setEditingProductId] = useState(null); // 正在編輯的產品ID
-  const [editedProduct, setEditedProduct] = useState(null); // 正在編輯的產品的暫存資料
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null); // 正在編輯的產品（null 表示新增模式）
+  const [formData, setFormData] = useState<Product>({
+    id: '',
+    name: '',
+    description: '',
+    price: 0,
+    imageUrl: '',
+  });
 
-  const handleAddProduct = () => {
-    // ... (新增產品函式不變)
-    const newProduct = {
+  // 開啟新增 Dialog
+  const handleOpenAddDialog = () => {
+    setEditingProduct(null);
+    setFormData({
       id: `p${Date.now()}`,
-      name: "全新商品",
-      description: "這是一個動態新增的商品項目。",
-      price: Math.floor(Math.random() * 5000) + 1000,
-      imageUrl: `https://via.placeholder.com/300?text=New+Item`,
-    };
-    setProducts(prevProducts => [...prevProducts, newProduct]);
+      name: '',
+      description: '',
+      price: 0,
+      imageUrl: 'https://via.placeholder.com/300?text=New+Item',
+    });
+    setOpenDialog(true);
   };
 
-  // 3. 處理 "編輯" 按鈕點擊
-  const handleEdit = (product) => {
-    setEditingProductId(product.id);
-    setEditedProduct({ ...product }); // 複製一份產品資料到暫存 state
+  // 開啟編輯 Dialog
+  const handleOpenEditDialog = (product: Product) => {
+    setEditingProduct(product);
+    setFormData({ ...product });
+    setOpenDialog(true);
   };
 
-  // 4. 處理 "儲存" 按鈕點擊
-  const handleSave = (productId) => {
-    setProducts(currentProducts =>
-      currentProducts.map(p => (p.id === productId ? editedProduct : p))
-    );
-    setEditingProductId(null); // 結束編輯模式
-    setEditedProduct(null);
-  };
-  
-  // 5. 處理 "取消" 按鈕點擊
-  const handleCancel = () => {
-    setEditingProductId(null); // 直接結束編輯模式
-    setEditedProduct(null);
+  // 關閉 Dialog
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setEditingProduct(null);
   };
 
-  // 6. 處理輸入框內容變更
-  const handleInputChange = (e) => {
+  // 儲存產品
+  const handleSave = () => {
+    if (editingProduct) {
+      // 編輯現有產品
+      setProducts(currentProducts =>
+        currentProducts.map(p => (p.id === editingProduct.id ? formData : p))
+      );
+    } else {
+      // 新增產品
+      setProducts(prevProducts => [...prevProducts, formData]);
+    }
+    handleCloseDialog();
+  };
+
+  // 處理輸入框內容變更
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setEditedProduct(prev => ({
+    setFormData(prev => ({
       ...prev,
       // 如果欄位是 price，確保存為數字
       [name]: name === 'price' ? parseFloat(value) || 0 : value
@@ -107,67 +130,99 @@ export default function Store() {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: 'background.default' }}>
+    <div className="flex flex-col h-screen bg-white">
       <Navbar />
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-          {/* ... (標題和新增商品按鈕不變) */}
           <Typography variant="h4" component="h1">商品列表</Typography>
-          <Button variant="contained" startIcon={<AddCircleOutlineIcon />} onClick={handleAddProduct}>新增商品</Button>
         </Box>
 
-        <Grid container spacing={4}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 4 }}>
           {products.map((product) => (
-            <Grid item key={product.id} xs={12} sm={6} md={4} lg={3}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <CardMedia
-                  component="img"
-                  height="140"
-                  image={product.imageUrl}
-                  alt={product.name}
-                />
-                {/* 7. 條件渲染：根據是否在編輯模式顯示不同內容 */}
-                {editingProductId === product.id ? (
-                  // ----- 編輯模式 -----
-                  <CardContent sx={{ flexGrow: 1, p: 2, '& .MuiTextField-root': { mb: 2 } }}>
-                    <TextField label="商品名稱" name="name" value={editedProduct.name} onChange={handleInputChange} fullWidth/>
-                    <TextField label="商品描述" name="description" value={editedProduct.description} onChange={handleInputChange} fullWidth multiline rows={3}/>
-                    <TextField label="價格" name="price" type="number" value={editedProduct.price} onChange={handleInputChange} fullWidth/>
-                  </CardContent>
-                ) : (
-                  // ----- 正常顯示模式 -----
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography gutterBottom variant="h5" component="h2">{product.name}</Typography>
-                    <Typography>{product.description}</Typography>
-                    <Typography variant="h6" color="primary" sx={{ mt: 2 }}>NT$ {product.price.toLocaleString()}</Typography>
-                  </CardContent>
-                )}
-                
-                {/* 8. 條件渲染：根據是否在編輯模式顯示不同按鈕 */}
-                <CardActions>
-                  {editingProductId === product.id ? (
-                    // ----- 編輯模式按鈕 -----
-                    <>
-                      <Button size="small" startIcon={<SaveIcon />} onClick={() => handleSave(product.id)} color="primary">儲存</Button>
-                      <Button size="small" startIcon={<CancelIcon />} onClick={handleCancel} color="inherit">取消</Button>
-                    </>
-                  ) : (
-                    // ----- 正常顯示模式按鈕 -----
-                    <>
-                      <Button size="small" startIcon={<AddShoppingCartIcon />}>加入購物車</Button>
-                      <Button size="small" startIcon={<EditIcon />} onClick={() => handleEdit(product)}>編輯</Button>
-                    </>
-                  )}
-                </CardActions>
-              </Card>
-            </Grid>
+            <Card key={product.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <CardMedia
+                component="img"
+                height="140"
+                image={product.imageUrl}
+                alt={product.name}
+              />
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Typography gutterBottom variant="h5" component="h2">{product.name}</Typography>
+                <Typography>{product.description}</Typography>
+                <Typography variant="h6" color="primary" sx={{ mt: 2 }}>NT$ {product.price.toLocaleString()}</Typography>
+              </CardContent>
+              <CardActions>
+                <Button size="small" startIcon={<AddShoppingCartIcon />}>加入購物車</Button>
+                <Button size="small" startIcon={<EditIcon />} onClick={() => handleOpenEditDialog(product)}>編輯</Button>
+              </CardActions>
+            </Card>
           ))}
-        </Grid>
+        </Box>
 
         <Link href="/" style={{ textDecoration: 'none', marginTop: '32px', display: 'inline-block' }}>
           <Button variant="contained">回到首頁</Button>
         </Link>
       </Container>
-    </Box>
+
+      {/* FAB 按鈕 */}
+      <Fab
+        color="primary"
+        aria-label="add"
+        sx={{ position: 'fixed', bottom: 16, right: 16 }}
+        onClick={handleOpenAddDialog}
+      >
+        <AddIcon />
+      </Fab>
+
+      {/* Dialog 編輯/新增視窗 */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingProduct ? '編輯商品' : '新增商品'}</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="商品名稱"
+            name="name"
+            type="text"
+            fullWidth
+            value={formData.name}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            label="商品描述"
+            name="description"
+            type="text"
+            fullWidth
+            multiline
+            rows={3}
+            value={formData.description}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            label="價格"
+            name="price"
+            type="number"
+            fullWidth
+            value={formData.price}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            label="圖片網址"
+            name="imageUrl"
+            type="text"
+            fullWidth
+            value={formData.imageUrl}
+            onChange={handleInputChange}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>取消</Button>
+          <Button onClick={handleSave} variant="contained">儲存</Button>
+        </DialogActions>
+      </Dialog>
+    </div>
   );
 }

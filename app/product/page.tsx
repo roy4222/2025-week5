@@ -1,6 +1,16 @@
 "use client";
 import Navbar from "../navbar";
-import { useState, FormEvent } from "react";
+import { useState } from "react";
+import {
+  Fab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 
 type Product = { id: number; name: string; description: string };
 
@@ -11,13 +21,21 @@ export default function Product() {
     { id: 3, name: "RTX 5080 Ti", description: "16GB VRAM - 旗艦級效能" },
   ]);
 
-  const [showForm, setShowForm] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemDesc, setNewItemDesc] = useState("");
 
-  const handleAddItem = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleOpenDialog = () => {
+    setNewItemName("");
+    setNewItemDesc("");
+    setOpenDialog(true);
+  };
 
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+  };
+
+  const handleAddItem = () => {
     if (!newItemName.trim()) {
       alert("請輸入產品名稱");
       return;
@@ -32,7 +50,7 @@ export default function Product() {
     setProducts([...products, newProduct]);
     setNewItemName("");
     setNewItemDesc("");
-    setShowForm(false);
+    setOpenDialog(false);
   };
 
   return (
@@ -74,75 +92,50 @@ export default function Product() {
             ))}
           </div>
 
-          {/* 新增按鈕 */}
-          <div className="flex justify-center mb-8">
-            <button
-              onClick={() => setShowForm(true)}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-medium transition shadow-md hover:shadow-lg"
-            >
-              + 新增產品
-            </button>
-          </div>
+          {/* FAB 按鈕 */}
+          <Fab
+            color="primary"
+            aria-label="add"
+            sx={{ position: "fixed", bottom: 16, right: 16 }}
+            onClick={handleOpenDialog}
+          >
+            <AddIcon />
+          </Fab>
 
-          {/* 新增表單 - Modal 風格 */}
-          {showForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
-                <h2 className="text-2xl font-bold text-slate-800 mb-6">新增產品</h2>
-
-                <form onSubmit={handleAddItem} className="space-y-4 text-black">
-                  {/* 產品名稱 */}
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      產品名稱 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newItemName}
-                      onChange={(e) => setNewItemName(e.target.value)}
-                      placeholder="例：RTX 5090 Ti"
-                      className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    />
-                  </div>
-
-                  {/* 產品描述 */}
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      產品描述
-                    </label>
-                    <textarea
-                      value={newItemDesc}
-                      onChange={(e) => setNewItemDesc(e.target.value)}
-                      placeholder="例：24GB VRAM - 旗艦級效能"
-                      rows={3}
-                      className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none"
-                    />
-                  </div>
-
-                  {/* 按鈕區 */}
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      type="submit"
-                      className="flex-1 bg-green-500 hover:bg-green-600 text-white font-medium py-2 rounded-lg transition"
-                    >
-                      提交
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowForm(false);
-                        setNewItemName("");
-                        setNewItemDesc("");
-                      }}
-                      className="flex-1 bg-slate-300 hover:bg-slate-400 text-slate-800 font-medium py-2 rounded-lg transition"
-                    >
-                      取消
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+          {/* Dialog 新增視窗 */}
+          <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+            <DialogTitle>新增產品</DialogTitle>
+            <DialogContent>
+              <TextField
+                autoFocus
+                margin="dense"
+                label="產品名稱"
+                type="text"
+                fullWidth
+                required
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                placeholder="例：RTX 5090 Ti"
+              />
+              <TextField
+                margin="dense"
+                label="產品描述"
+                type="text"
+                fullWidth
+                multiline
+                rows={3}
+                value={newItemDesc}
+                onChange={(e) => setNewItemDesc(e.target.value)}
+                placeholder="例：24GB VRAM - 旗艦級效能"
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseDialog}>取消</Button>
+              <Button onClick={handleAddItem} variant="contained">
+                提交
+              </Button>
+            </DialogActions>
+          </Dialog>
         </main>
       </div>
     </>
