@@ -2,7 +2,7 @@
 CREATE TABLE products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
-  description TEXT NOT NULL,
+  description TEXT NOT NULL
 );
 
 -- 啟用 Row Level Security (RLS)
