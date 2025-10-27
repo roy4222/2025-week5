@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../navbar";
+import { supabase } from "@/lib/supabase";
 import {
   Fab,
   Dialog,
@@ -10,39 +11,65 @@ import {
   DialogActions,
   Button,
   TextField,
+  CircularProgress,
+  Alert,
+  IconButton,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 interface Anime {
-  id: number;
+  id: string;
   title: string;
   genre: string;
   rating: number;
+  created_at?: string;
 }
 
 export default function Animate() {
-  const [animes, setAnimes] = useState<Anime[]>([
-    { id: 1, title: "進擊的巨人", genre: "動作", rating: 9.0 },
-    { id: 2, title: "鬼滅之刃", genre: "冒險", rating: 8.7 },
-    { id: 3, title: "咒術迴戰", genre: "奇幻", rating: 8.6 },
-    { id: 4, title: "間諜家家酒", genre: "喜劇", rating: 8.5 },
-    { id: 5, title: "葬送的芙莉蓮", genre: "奇幻", rating: 9.2 },
-    { id: 6, title: "我推的孩子", genre: "劇情", rating: 8.4 },
-  ]);
-
+  const [animes, setAnimes] = useState<Anime[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingAnime, setEditingAnime] = useState<Anime | null>(null);
   const [formData, setFormData] = useState<Anime>({
-    id: 0,
+    id: "",
     title: "",
     genre: "",
     rating: 0,
   });
 
+  // 從 Supabase 載入動漫資料
+  const fetchAnimes = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase
+        .from("animes")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setAnimes(data || []);
+    } catch (err) {
+      console.error("Error fetching animes:", err);
+      setError(err instanceof Error ? err.message : "載入動漫資料失敗");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 初始載入
+  useEffect(() => {
+    fetchAnimes();
+  }, []);
+
   const handleOpenAddDialog = () => {
     setEditingAnime(null);
     setFormData({
-      id: Date.now(),
+      id: "",
       title: "",
       genre: "",
       rating: 0,
@@ -61,22 +88,66 @@ export default function Animate() {
     setEditingAnime(null);
   };
 
-  const handleSave = () => {
-    if (editingAnime) {
-      // 編輯現有動漫
-      setAnimes(animes.map((anime) => (anime.id === editingAnime.id ? formData : anime)));
-    } else {
-      // 新增動漫
-      setAnimes([...animes, formData]);
+  const handleSave = async () => {
+    try {
+      setError(null);
+
+      if (editingAnime) {
+        // 編輯現有動漫
+        const { error } = await supabase
+          .from("animes")
+          .update({
+            title: formData.title,
+            genre: formData.genre,
+            rating: formData.rating,
+          })
+          .eq("id", editingAnime.id);
+
+        if (error) throw error;
+      } else {
+        // 新增動漫
+        const { error } = await supabase.from("animes").insert([
+          {
+            title: formData.title,
+            genre: formData.genre,
+            rating: formData.rating,
+          },
+        ]);
+
+        if (error) throw error;
+      }
+
+      handleCloseDialog();
+      fetchAnimes(); // 重新載入動漫列表
+    } catch (err) {
+      console.error("Error saving anime:", err);
+      setError(err instanceof Error ? err.message : "儲存動漫失敗");
     }
-    handleCloseDialog();
+  };
+
+  const handleDelete = async (animeId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // 防止觸發卡片的點擊事件
+    
+    if (!confirm("確定要刪除此動漫嗎?")) return;
+
+    try {
+      setError(null);
+
+      const { error } = await supabase.from("animes").delete().eq("id", animeId);
+
+      if (error) throw error;
+
+      fetchAnimes(); // 重新載入動漫列表
+    } catch (err) {
+      console.error("Error deleting anime:", err);
+      setError(err instanceof Error ? err.message : "刪除動漫失敗");
+    }
   };
 
   const handleInputChange = (field: keyof Anime, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  
   return (
     <div className="flex flex-col h-screen bg-white">
       <Navbar />
@@ -84,24 +155,50 @@ export default function Animate() {
         <h1 className="text-3xl font-bold text-center text-gray-600 mb-6">
           動漫推薦
         </h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {animes.map((anime) => (
-            <div
-              key={anime.id}
-              className="bg-white border border-gray-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow h-full cursor-pointer"
-              onClick={() => handleOpenEditDialog(anime)}
-            >
-              <h2 className="text-xl text-gray-600 font-semibold mb-2">
-                {anime.title}
-              </h2>
-              <p className="text-gray-600 mb-2">類型: {anime.genre}</p>
-              <div className="flex items-center">
-                <span className="text-yellow-500 text-lg">★</span>
-                <span className="ml-1 text-gray-700">{anime.rating}</span>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <CircularProgress />
+          </div>
+        ) : animes.length === 0 ? (
+          <div className="text-center text-gray-500 mt-12">
+            <p className="text-xl">目前沒有動漫資料</p>
+            <p className="mt-2">點擊右下角的 + 按鈕新增動漫</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {animes.map((anime) => (
+              <div
+                key={anime.id}
+                className="bg-white border border-gray-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow h-full cursor-pointer relative"
+                onClick={() => handleOpenEditDialog(anime)}
+              >
+                <IconButton
+                  size="small"
+                  color="error"
+                  sx={{ position: "absolute", top: 8, right: 8 }}
+                  onClick={(e) => handleDelete(anime.id, e)}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+                <h2 className="text-xl text-gray-600 font-semibold mb-2 pr-8">
+                  {anime.title}
+                </h2>
+                <p className="text-gray-600 mb-2">類型: {anime.genre}</p>
+                <div className="flex items-center">
+                  <span className="text-yellow-500 text-lg">★</span>
+                  <span className="ml-1 text-gray-700">{anime.rating}</span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* FAB 按鈕 */}
