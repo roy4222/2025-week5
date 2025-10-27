@@ -1,9 +1,10 @@
 // 為了使用 MUI 元件，我們需要宣告這是一個 Client Component
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from "next/link";
 import Navbar from "../navbar";
+import { supabase } from '../../lib/supabase'; // 確保路徑正確
 
 // 引入 Material-UI 元件
 import {
@@ -21,102 +22,163 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  CircularProgress,
 } from '@mui/material';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
-
-const initialProducts = [
-  // ... (初始產品資料與之前相同，此處省略)
-  {
-    id: "p001",
-    name: "高效能筆記型電腦",
-    description: "搭載最新處理器，適合專業人士與遊戲玩家。",
-    price: 35000,
-    imageUrl: "https://via.placeholder.com/300?text=Laptop",
-  },
-  {
-    id: "p002",
-    name: "人體工學滑鼠",
-    description: "長時間使用也能保持舒適，提升工作效率。",
-    price: 1200,
-    imageUrl: "https://via.placeholder.com/300?text=Mouse",
-  },
-  {
-    id: "p003",
-    name: "機械式鍵盤",
-    description: "提供絕佳的回饋手感，打字體驗一流。",
-    price: 2800,
-    imageUrl: "https://via.placeholder.com/300?text=Keyboard",
-  },
-  {
-    id: "p004",
-    name: "4K 高解析度螢幕",
-    description: "細膩畫質，色彩鮮豔，帶來沉浸式視覺饗宴。",
-    price: 8500,
-    imageUrl: "https://via.placeholder.com/300?text=Monitor",
-  },
-];
-
+// 更新 Product type，id 是數字
 type Product = {
-  id: string;
+  id: number; // ID 現在是數字
   name: string;
   description: string;
   price: number;
   imageUrl: string;
+  created_at?: string;
+};
+
+// 用於表單的 type，ID 在新增時是可選的
+type ProductFormData = Omit<Product, 'id' | 'created_at'> & {
+  id?: number; 
 };
 
 export default function Store() {
-  const [products, setProducts] = useState(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null); // 正在編輯的產品（null 表示新增模式）
-  const [formData, setFormData] = useState<Product>({
-    id: '',
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  
+  // 表單的初始狀態
+  const initialFormData: ProductFormData = {
     name: '',
     description: '',
     price: 0,
-    imageUrl: '',
-  });
+    imageUrl: 'https://via.placeholder.com/300?text=New+Item',
+  };
+  
+  const [formData, setFormData] = useState<ProductFormData>(initialFormData);
 
-  // 開啟新增 Dialog
+  // --- Supabase Data Fetching ---
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      // 從 'products' 表讀取
+      const { data, error } = await supabase
+        .from('products') 
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching products:', error);
+      } else if (data) {
+        setProducts(data);
+      }
+    } catch (err) {
+      console.error('An unexpected error occurred:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Dialog Handlers ---
+
   const handleOpenAddDialog = () => {
     setEditingProduct(null);
-    setFormData({
-      id: `p${Date.now()}`,
-      name: '',
-      description: '',
-      price: 0,
-      imageUrl: 'https://via.placeholder.com/300?text=New+Item',
-    });
+    setFormData(initialFormData); // 重設為初始空表單 (沒有 id)
     setOpenDialog(true);
   };
 
-  // 開啟編輯 Dialog
   const handleOpenEditDialog = (product: Product) => {
     setEditingProduct(product);
-    setFormData({ ...product });
+    setFormData({ ...product }); // 載入包含 id 的現有資料
     setOpenDialog(true);
   };
 
-  // 關閉 Dialog
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingProduct(null);
   };
 
-  // 儲存產品
-  const handleSave = () => {
-    if (editingProduct) {
-      // 編輯現有產品
-      setProducts(currentProducts =>
-        currentProducts.map(p => (p.id === editingProduct.id ? formData : p))
-      );
-    } else {
-      // 新增產品
-      setProducts(prevProducts => [...prevProducts, formData]);
+  // --- Supabase CRUD Operations ---
+
+  const handleSave = async () => {
+    if (!formData.name) {
+      alert('商品名稱為必填項。');
+      return;
     }
-    handleCloseDialog();
+
+    if (editingProduct) {
+      // 編輯模式 (Update) - formData 中有 id
+      const { data, error } = await supabase
+        .from('products')
+        .update({
+          name: formData.name,
+          description: formData.description,
+          price: formData.price,
+          imageUrl: formData.imageUrl,
+        })
+        .eq('id', editingProduct.id) // 使用 editingProduct.id 來確保
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating product:', error);
+        alert(`更新失敗: ${error.message}`);
+      } else if (data) {
+        setProducts(currentProducts =>
+          currentProducts.map(p => (p.id === data.id ? data : p))
+        );
+        handleCloseDialog();
+      }
+
+    } else {
+      // 新增模式 (Insert) - formData 中沒有 id
+      
+      // 我們需要移除 formData 中的 'id' (即使它是 undefined)，
+      // 因為 insertData 不應該包含 id
+      const { id, ...insertData } = formData; 
+
+      const { data, error } = await supabase
+        .from('products')
+        .insert(insertData) // 插入沒有 id 的資料
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding product:', error);
+        alert(`新增失敗: ${error.message}`);
+      } else if (data) {
+        setProducts(prevProducts => [data, ...prevProducts]);
+        handleCloseDialog();
+      }
+    }
+  };
+
+  // 刪除 (id 是數字)
+  const handleDelete = async (productId: number) => {
+    if (!window.confirm('確定要刪除這個商品嗎？')) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', productId);
+
+    if (error) {
+      console.error('Error deleting product:', error);
+      alert(`刪除失敗: ${error.message}`);
+    } else {
+      setProducts(currentProducts =>
+        currentProducts.filter(p => p.id !== productId)
+      );
+    }
   };
 
   // 處理輸入框內容變更
@@ -124,17 +186,26 @@ export default function Store() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      // 如果欄位是 price，確保存為數字
       [name]: name === 'price' ? parseFloat(value) || 0 : value
     }));
   };
+
+  // --- Render ---
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-white">
       <Navbar />
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-          <Typography variant="h4" component="h1">商品列表</Typography>
+          <Typography variant="h4" component="h1">商品列表 (Supabase)</Typography>
         </Box>
 
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 4 }}>
@@ -149,11 +220,13 @@ export default function Store() {
               <CardContent sx={{ flexGrow: 1 }}>
                 <Typography gutterBottom variant="h5" component="h2">{product.name}</Typography>
                 <Typography>{product.description}</Typography>
+                {/* 確保 price 是數字才能用 toLocaleString() */}
                 <Typography variant="h6" color="primary" sx={{ mt: 2 }}>NT$ {product.price.toLocaleString()}</Typography>
               </CardContent>
               <CardActions>
                 <Button size="small" startIcon={<AddShoppingCartIcon />}>加入購物車</Button>
                 <Button size="small" startIcon={<EditIcon />} onClick={() => handleOpenEditDialog(product)}>編輯</Button>
+                <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => handleDelete(product.id)}>刪除</Button>
               </CardActions>
             </Card>
           ))}
@@ -174,7 +247,7 @@ export default function Store() {
         <AddIcon />
       </Fab>
 
-      {/* Dialog 編輯/新增視窗 */}
+      {/* Dialog 編輯/新增視窗 (移除了 ID 欄位) */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>{editingProduct ? '編輯商品' : '新增商品'}</DialogTitle>
         <DialogContent>
