@@ -1,6 +1,6 @@
 "use client";
 import Navbar from "../navbar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Fab,
   Dialog,
@@ -9,21 +9,50 @@ import {
   DialogActions,
   Button,
   TextField,
+  CircularProgress,
+  Box,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import { createClient } from "@supabase/supabase-js";
 
-type Product = { id: number; name: string; description: string };
+type Product = { id: string; name: string; description: string };
+
+// 初始化 Supabase 客戶端
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+);
 
 export default function Product() {
-  const [products, setProducts] = useState<Product[]>([
-    { id: 1, name: "RTX 5060 Ti", description: "16GB VRAM - 高效能入門級" },
-    { id: 2, name: "RTX 5070 Ti", description: "16GB VRAM - 中高階效能" },
-    { id: 3, name: "RTX 5080 Ti", description: "16GB VRAM - 旗艦級效能" },
-  ]);
-
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemDesc, setNewItemDesc] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 從資料庫讀取產品
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.from("products").select("*");
+
+      if (error) {
+        console.error("讀取產品失敗:", error);
+        return;
+      }
+
+      setProducts(data || []);
+    } catch (err) {
+      console.error("錯誤:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleOpenDialog = () => {
     setNewItemName("");
@@ -35,22 +64,41 @@ export default function Product() {
     setOpenDialog(false);
   };
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!newItemName.trim()) {
       alert("請輸入產品名稱");
       return;
     }
 
-    const newProduct: Product = {
-      id: Math.max(...products.map((p) => p.id), 0) + 1,
-      name: newItemName.trim(),
-      description: newItemDesc.trim(),
-    };
+    try {
+      setIsSubmitting(true);
+      const { data, error } = await supabase
+        .from("products")
+        .insert([
+          {
+            name: newItemName.trim(),
+            description: newItemDesc.trim(),
+          },
+        ])
+        .select();
 
-    setProducts([...products, newProduct]);
-    setNewItemName("");
-    setNewItemDesc("");
-    setOpenDialog(false);
+      if (error) {
+        console.error("新增產品失敗:", error);
+        alert("新增產品失敗，請重試");
+        return;
+      }
+
+      // 重新讀取產品清單
+      await fetchProducts();
+      setNewItemName("");
+      setNewItemDesc("");
+      setOpenDialog(false);
+    } catch (err) {
+      console.error("錯誤:", err);
+      alert("發生錯誤，請重試");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -65,32 +113,45 @@ export default function Product() {
             <p className="text-slate-600">高效能遊戲與專業工作站顯示卡</p>
           </div>
 
-          {/* 產品網格 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 border-l-4 border-blue-500"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-800">
-                      {product.name}
-                    </h2>
-                  </div>
-                  <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">
-                    新品
-                  </span>
+          {/* 載入狀態 */}
+          {loading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+              <CircularProgress />
+            </Box>
+          ) : (
+            /* 產品網格 */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {products.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-slate-500 text-lg">暫無產品，點擊 + 按鈕新增</p>
                 </div>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  {product.description}
-                </p>
-                <button className="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md transition text-sm font-medium">
-                  了解更多
-                </button>
-              </div>
-            ))}
-          </div>
+              ) : (
+                products.map((product) => (
+                  <div
+                    key={product.id}
+                    className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 border-l-4 border-blue-500"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h2 className="text-xl font-semibold text-slate-800">
+                          {product.name}
+                        </h2>
+                      </div>
+                      <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">
+                        新品
+                      </span>
+                    </div>
+                    <p className="text-slate-600 text-sm leading-relaxed">
+                      {product.description}
+                    </p>
+                    <button className="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md transition text-sm font-medium">
+                      了解更多
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
 
           {/* FAB 按鈕 */}
           <Fab
@@ -130,9 +191,15 @@ export default function Product() {
               />
             </DialogContent>
             <DialogActions>
-              <Button onClick={handleCloseDialog}>取消</Button>
-              <Button onClick={handleAddItem} variant="contained">
-                提交
+              <Button onClick={handleCloseDialog} disabled={isSubmitting}>
+                取消
+              </Button>
+              <Button
+                onClick={handleAddItem}
+                variant="contained"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "提交中..." : "提交"}
               </Button>
             </DialogActions>
           </Dialog>
