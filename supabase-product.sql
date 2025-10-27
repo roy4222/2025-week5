@@ -2,7 +2,7 @@
 CREATE TABLE products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
-  description TEXT,
+  description TEXT NOT NULL,
 );
 
 -- 啟用 Row Level Security (RLS)
@@ -25,7 +25,7 @@ CREATE POLICY "Allow public delete access" ON products
   FOR DELETE USING (true);
 
 -- 插入初始資料
-INSERT INTO products (id, name, description) VALUES
+INSERT INTO products (name, description) VALUES
   ('RTX 5060 Ti', '16GB VRAM - 高效能入門級'),
   ('RTX 5070 Ti', '16GB VRAM - 中高階效能'),
   ('RTX 5080 Ti', '16GB VRAM - 頂級效能');
