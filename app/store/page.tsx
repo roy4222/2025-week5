@@ -1,4 +1,4 @@
-// 為了使用 MUI 元件，我們需要宣告這是一個 Client Component
+// 宣告為 Client Component
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -6,42 +6,19 @@ import Link from "next/link";
 import Navbar from "../navbar";
 import { supabase } from '../../lib/supabase'; // 確保路徑正確
 
-// 引入 Material-UI 元件
-import {
-  Box,
-  Container,
-  Card,
-  CardMedia,
-  CardContent,
-  Typography,
-  CardActions,
-  Button,
-  TextField,
-  Fab,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  CircularProgress,
-} from '@mui/material';
-import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-
-// 更新 Product type，id 是數字
+// Product type (保持不變)
 type Product = {
-  id: number; // ID 現在是數字
+  id: string;
   name: string;
   description: string;
   price: number;
-  imageUrl: string;
+  image_url: string;
   created_at?: string;
 };
 
-// 用於表單的 type，ID 在新增時是可選的
+// ProductFormData type (保持不變)
 type ProductFormData = Omit<Product, 'id' | 'created_at'> & {
-  id?: number; 
+  id?: string;
 };
 
 export default function Store() {
@@ -49,15 +26,15 @@ export default function Store() {
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  
-  // 表單的初始狀態
+ 
+  // 表單的初始狀態 (保持不變)
   const initialFormData: ProductFormData = {
     name: '',
     description: '',
     price: 0,
-    imageUrl: 'https://via.placeholder.com/300?text=New+Item',
+    image_url: 'https://via.placeholder.com/300?text=New+Item',
   };
-  
+ 
   const [formData, setFormData] = useState<ProductFormData>(initialFormData);
 
   // --- Supabase Data Fetching ---
@@ -68,9 +45,9 @@ export default function Store() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // 從 'products' 表讀取
+      // [修改] 將 'products' 改為 'store'
       const { data, error } = await supabase
-        .from('products') 
+        .from('store')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -86,17 +63,16 @@ export default function Store() {
     }
   };
 
-  // --- Dialog Handlers ---
-
+  // --- Dialog Handlers (保持不變) ---
   const handleOpenAddDialog = () => {
     setEditingProduct(null);
-    setFormData(initialFormData); // 重設為初始空表單 (沒有 id)
+    setFormData(initialFormData);
     setOpenDialog(true);
   };
 
   const handleOpenEditDialog = (product: Product) => {
     setEditingProduct(product);
-    setFormData({ ...product }); // 載入包含 id 的現有資料
+    setFormData({ ...product });
     setOpenDialog(true);
   };
 
@@ -106,7 +82,6 @@ export default function Store() {
   };
 
   // --- Supabase CRUD Operations ---
-
   const handleSave = async () => {
     if (!formData.name) {
       alert('商品名稱為必填項。');
@@ -114,16 +89,17 @@ export default function Store() {
     }
 
     if (editingProduct) {
-      // 編輯模式 (Update) - formData 中有 id
+      // 編輯模式 (Update)
+      // [修改] 將 'products' 改為 'store'
       const { data, error } = await supabase
-        .from('products')
+        .from('store')
         .update({
           name: formData.name,
           description: formData.description,
           price: formData.price,
-          imageUrl: formData.imageUrl,
+          image_url: formData.image_url,
         })
-        .eq('id', editingProduct.id) // 使用 editingProduct.id 來確保
+        .eq('id', editingProduct.id)
         .select()
         .single();
 
@@ -138,15 +114,12 @@ export default function Store() {
       }
 
     } else {
-      // 新增模式 (Insert) - formData 中沒有 id
-      
-      // 我們需要移除 formData 中的 'id' (即使它是 undefined)，
-      // 因為 insertData 不應該包含 id
-      const { id, ...insertData } = formData; 
-
+      // 新增模式 (Insert)
+      const { id, ...insertData } = formData;
+      // [修改] 將 'products' 改為 'store'
       const { data, error } = await supabase
-        .from('products')
-        .insert(insertData) // 插入沒有 id 的資料
+        .from('store')
+        .insert(insertData)
         .select()
         .single();
 
@@ -160,14 +133,15 @@ export default function Store() {
     }
   };
 
-  // 刪除 (id 是數字)
-  const handleDelete = async (productId: number) => {
+  // 刪除
+  const handleDelete = async (productId: string) => {
     if (!window.confirm('確定要刪除這個商品嗎？')) {
       return;
     }
 
+    // [修改] 將 'products' 改為 'store'
     const { error } = await supabase
-      .from('products')
+      .from('store')
       .delete()
       .eq('id', productId);
 
@@ -181,8 +155,8 @@ export default function Store() {
     }
   };
 
-  // 處理輸入框內容變更
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // --- 處理 input 和 textarea 的變更 (保持不變) ---
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -190,112 +164,142 @@ export default function Store() {
     }));
   };
 
-  // --- Render ---
-
+  // --- Render (保持不變) ---
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center h-screen">
+        <p className="text-xl">Loading...</p>
+      </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col min-h-screen">
       <Navbar />
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-          <Typography variant="h4" component="h1">商品列表 (Supabase)</Typography>
-        </Box>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 mb-4 w-full">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-3xl font-bold">商品列表 (Supabase)</h1>
+        </div>
 
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 4 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {products.map((product) => (
-            <Card key={product.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <CardMedia
-                component="img"
-                height="140"
-                image={product.imageUrl}
+            <div key={product.id} className="shadow-lg rounded-lg overflow-hidden h-full flex flex-col bg-white dark:bg-zinc-800">
+              <img
+                className="h-40 w-full object-cover"
+                src={product.image_url}
                 alt={product.name}
               />
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Typography gutterBottom variant="h5" component="h2">{product.name}</Typography>
-                <Typography>{product.description}</Typography>
-                {/* 確保 price 是數字才能用 toLocaleString() */}
-                <Typography variant="h6" color="primary" sx={{ mt: 2 }}>NT$ {product.price.toLocaleString()}</Typography>
-              </CardContent>
-              <CardActions>
-                <Button size="small" startIcon={<AddShoppingCartIcon />}>加入購物車</Button>
-                <Button size="small" startIcon={<EditIcon />} onClick={() => handleOpenEditDialog(product)}>編輯</Button>
-                <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => handleDelete(product.id)}>刪除</Button>
-              </CardActions>
-            </Card>
+              <div className="p-6 flex-grow">
+                <h2 className="text-xl font-semibold mb-2">{product.name}</h2>
+                <p className="text-gray-700 dark:text-gray-300 text-sm">{product.description}</p>
+                <p className="text-lg font-bold text-blue-600 mt-4">NT$ {product.price.toLocaleString()}</p>
+              </div>
+              <div className="px-6 pb-6 flex flex-wrap gap-2">
+                <button className="inline-flex items-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+                  加入購物車
+                </button>
+                <button
+                  onClick={() => handleOpenEditDialog(product)}
+                  className="inline-flex items-center px-3 py-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300 dark:bg-zinc-600 dark:text-white dark:hover:bg-zinc-500"
+                >
+                  編輯
+                </button>
+                <button
+                  onClick={() => handleDelete(product.id)}
+                  className="inline-flex items-center px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700"
+                >
+                  刪除
+                </button>
+              </div>
+            </div>
           ))}
-        </Box>
+        </div>
 
-        <Link href="/" style={{ textDecoration: 'none', marginTop: '32px', display: 'inline-block' }}>
-          <Button variant="contained">回到首頁</Button>
+        <Link href="/" className="inline-block mt-8 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          回到首頁
         </Link>
-      </Container>
+      </main>
 
-      {/* FAB 按鈕 */}
-      <Fab
+      <button
         color="primary"
         aria-label="add"
-        sx={{ position: 'fixed', bottom: 16, right: 16 }}
+        className="fixed bottom-6 right-6 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl font-bold shadow-lg hover:bg-blue-700"
         onClick={handleOpenAddDialog}
       >
-        <AddIcon />
-      </Fab>
+        +
+      </button>
 
-      {/* Dialog 編輯/新增視窗 (移除了 ID 欄位) */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingProduct ? '編輯商品' : '新增商品'}</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="商品名稱"
-            name="name"
-            type="text"
-            fullWidth
-            value={formData.name}
-            onChange={handleInputChange}
-          />
-          <TextField
-            margin="dense"
-            label="商品描述"
-            name="description"
-            type="text"
-            fullWidth
-            multiline
-            rows={3}
-            value={formData.description}
-            onChange={handleInputChange}
-          />
-          <TextField
-            margin="dense"
-            label="價格"
-            name="price"
-            type="number"
-            fullWidth
-            value={formData.price}
-            onChange={handleInputChange}
-          />
-          <TextField
-            margin="dense"
-            label="圖片網址"
-            name="imageUrl"
-            type="text"
-            fullWidth
-            value={formData.imageUrl}
-            onChange={handleInputChange}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>取消</Button>
-          <Button onClick={handleSave} variant="contained">儲存</Button>
-        </DialogActions>
-      </Dialog>
+      {openDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" aria-labelledby="dialog-title" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 bg-black/50" onClick={handleCloseDialog}></div>
+          <div className="relative bg-white dark:bg-zinc-800 rounded-lg shadow-xl w-full max-w-md">
+            <h2 id="dialog-title" className="text-xl font-semibold p-6 pb-2">
+              {editingProduct ? '編輯商品' : '新增商品'}
+            </h2>
+            <div className="p-6 space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">商品名稱</label>
+                <input
+                  autoFocus
+                  id="name"
+                  name="name"
+                  type="text"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:border-zinc-600"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">商品描述</label>
+                <textarea
+                  id="description"
+                  name="description"
+                  rows={3}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:border-zinc-600"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div>
+                <label htmlFor="price" className="block text-sm font-medium text-gray-700 dark:text-gray-300">價格</label>
+                <input
+                  id="price"
+                  name="price"
+                  type="number"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:border-zinc-600"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div>
+                <label htmlFor="image_url" className="block text-sm font-medium text-gray-700 dark:text-gray-300">圖片網址</label>
+                <input
+                  id="image_url"
+                  name="image_url"
+                  type="text"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:border-zinc-600"
+                  value={formData.image_url}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 flex justify-end gap-3">
+              <button
+                onClick={handleCloseDialog}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-zinc-600 dark:text-white dark:hover:bg-zinc-500"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                儲存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
