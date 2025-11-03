@@ -8,11 +8,13 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  IconButton,
   TextField,
   CircularProgress,
   Box,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { createClient } from "@supabase/supabase-js";
 
 type Product = { id: string; name: string; description: string };
@@ -30,6 +32,7 @@ export default function Product() {
   const [newItemName, setNewItemName] = useState("");
   const [newItemDesc, setNewItemDesc] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // 從資料庫讀取產品
   useEffect(() => {
@@ -131,6 +134,41 @@ export default function Product() {
                     key={product.id}
                     className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 border-l-4 border-blue-500"
                   >
+                    {/* 刪除按鈕 */}
+                    <div className="flex justify-end">
+                      <IconButton
+                        aria-label="delete"
+                        size="small"
+                        onClick={async () => {
+                          if (!confirm(`確定要刪除 ${product.name} 嗎？`)) return;
+                          try {
+                            setDeletingId(product.id);
+                            const { error } = await supabase
+                              .from("products")
+                              .delete()
+                              .eq("id", product.id);
+                            if (error) {
+                              console.error("刪除失敗:", error);
+                              alert("刪除失敗，請重試");
+                              return;
+                            }
+                            await fetchProducts();
+                          } catch (err) {
+                            console.error(err);
+                            alert("發生錯誤，請重試");
+                          } finally {
+                            setDeletingId(null);
+                          }
+                        }}
+                        disabled={deletingId === product.id}
+                      >
+                        {deletingId === product.id ? (
+                          <CircularProgress size={18} />
+                        ) : (
+                          <DeleteIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </div>
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <h2 className="text-xl font-semibold text-slate-800">
