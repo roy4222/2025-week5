@@ -10,14 +10,17 @@ import {
   DialogActions,
   Button,
   TextField,
+  IconButton,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 type Game = {
-  id: number;
+  id: number | string; // 支援 integer 或 uuid
   title: string;
   genre: string;
   rating: number;
+  created_at?: string;
 };
 
 export default function Games() {
@@ -52,6 +55,38 @@ export default function Games() {
     setOpenDialog(false);
     setError(null);
   };
+
+  async function handleDelete(id: number | string) {
+    if (!SUPA_URL || !SUPA_KEY) {
+      console.error("未設定 Supabase 環境變數");
+      return;
+    }
+    if (!confirm("確定要刪除這個遊戲嗎？")) return;
+
+    console.log("Deleting game with id:", id, "type:", typeof id);
+
+    try {
+      // PostgREST filter 語法：直接傳 id 值（不需引號）
+      const deleteUrl = `${SUPA_URL.replace(/\/$/, "")}/rest/v1/games?id=eq.${id}`;
+      console.log("DELETE URL:", deleteUrl);
+      const res = await fetch(deleteUrl, {
+        method: "DELETE",
+        headers: getHeaders(),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Supabase REST delete error:", res.status, text);
+        alert(`刪除失敗: ${res.status} - 請檢查 Supabase RLS 設定或稍後再試`);
+        return;
+      }
+      // 成功後從 state 移除
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      alert("刪除成功！");
+    } catch (err) {
+      console.error(err);
+      alert("刪除失敗，請稍後再試");
+    }
+  }
 
   function handleAdd() {
     setError(null);
@@ -90,7 +125,15 @@ export default function Games() {
         }
         const rows = await res.json();
         if (Array.isArray(rows) && rows[0]) {
-          setItems((prev) => [rows[0] as Game, ...prev]);
+          const newRow = rows[0] as Record<string, unknown>;
+          const normalized: Game = {
+            id: typeof newRow.id === "number" || typeof newRow.id === "string" ? newRow.id : 0,
+            title: typeof newRow.title === "string" ? newRow.title : "",
+            genre: typeof newRow.genre === "string" ? newRow.genre : "",
+            rating: newRow.rating !== null && newRow.rating !== undefined ? Number(newRow.rating) : 0,
+            created_at: typeof newRow.created_at === "string" ? newRow.created_at : undefined,
+          };
+          setItems((prev) => [normalized, ...prev]);
         }
         // reset and close
         setTitle("");
@@ -99,7 +142,7 @@ export default function Games() {
         setOpenDialog(false);
       } catch (err) {
         console.error(err);
-        setError("儲存失敗，請稍後再試");
+        setError("儲存失敗,請稍後再試");
       }
     })();
   }
@@ -124,10 +167,17 @@ export default function Games() {
         }
         const data = await res.json();
         console.log("Supabase fetched games rows:", data);
-        const normalized = (data as any[]).map((row) => ({
-          ...row,
-          rating: row.rating !== null && row.rating !== undefined ? Number(row.rating) : 0,
-        }));
+        const normalized = Array.isArray(data)
+          ? data.map((row: unknown) => {
+              const r = row as Record<string, unknown>;
+              return {
+                id: typeof r.id === "number" || typeof r.id === "string" ? r.id : 0,
+                title: typeof r.title === "string" ? r.title : "",
+                genre: typeof r.genre === "string" ? r.genre : "",
+                rating: r.rating !== null && r.rating !== undefined ? Number(r.rating) : 0,
+              } as Game;
+            })
+          : [];
         setItems(normalized as Game[]);
       } catch (err) {
         console.error(err);
@@ -149,15 +199,21 @@ export default function Games() {
           <div className="text-center py-20 text-gray-500">目前沒有遊戲資料</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.map((game) => (
-              <div key={game.id}>
-                <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow h-full">
-                  <h2 className="text-xl text-gray-600 font-semibold mb-2">{game.title}</h2>
-                  <p className="text-gray-600 mb-2">類型: {game.genre}</p>
-                  <div className="flex items-center">
-                    <span className="text-yellow-500 text-lg">★</span>
-                    <span className="ml-1 text-gray-700">{game.rating}</span>
-                  </div>
+            {items.map((game, index) => (
+              <div key={`${game.id}-${index}`} className="bg-white border border-gray-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow h-full relative">
+                <IconButton
+                  aria-label="delete"
+                  size="small"
+                  onClick={() => handleDelete(game.id)}
+                  sx={{ position: "absolute", top: 8, right: 8 }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+                <h2 className="text-xl text-gray-600 font-semibold mb-2">{game.title}</h2>
+                <p className="text-gray-600 mb-2">類型: {game.genre}</p>
+                <div className="flex items-center">
+                  <span className="text-yellow-500 text-lg">★</span>
+                  <span className="ml-1 text-gray-700">{game.rating}</span>
                 </div>
               </div>
             ))}
