@@ -5,19 +5,17 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "../navbar";
 import { supabase } from "../../lib/supabase"; // 確保路徑正確
-import Image from "next/image";
 
-// Product type (保持不變)
+// Product type (移除 image_url)
 type Product = {
   id: string;
   name: string;
   description: string;
   price: number;
-  image_url: string;
   created_at?: string;
 };
 
-// ProductFormData type (保持不變)
+// ProductFormData type (移除 image_url)
 type ProductFormData = Omit<Product, "id" | "created_at"> & {
   id?: string;
 };
@@ -28,12 +26,11 @@ export default function Store() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  // 表單的初始狀態 (保持不變)
+  // 表單的初始狀態 (移除 image_url)
   const initialFormData: ProductFormData = {
     name: "",
     description: "",
     price: 0,
-    image_url: "https://via.placeholder.com/300?text=New+Item",
   };
 
   const [formData, setFormData] = useState<ProductFormData>(initialFormData);
@@ -91,14 +88,12 @@ export default function Store() {
 
     if (editingProduct) {
       // 編輯模式 (Update)
-      // [修改] 將 'products' 改為 'store'
       const { data, error } = await supabase
         .from("store")
         .update({
           name: formData.name,
           description: formData.description,
           price: formData.price,
-          image_url: formData.image_url,
         })
         .eq("id", editingProduct.id)
         .select()
@@ -187,19 +182,12 @@ export default function Store() {
               key={product.id}
               className="shadow-lg rounded-lg overflow-hidden h-full flex flex-col bg-white"
             >
-              <Image
-                className="h-40 w-full object-cover"
-                src={product.image_url}
-                alt={product.name}
-                width={300}
-                height={160}
-              />
               <div className="p-6 flex-grow">
                 <h2 className="text-xl font-semibold mb-2">{product.name}</h2>
-                <p className="text-gray-700  text-sm">
+                <p className="text-gray-700 text-sm mb-4">
                   {product.description}
                 </p>
-                <p className="text-lg font-bold text-blue-600 mt-4">
+                <p className="text-lg font-bold text-blue-600">
                   NT$ {product.price.toLocaleString()}
                 </p>
               </div>
@@ -215,7 +203,7 @@ export default function Store() {
                 </button>
                 <button
                   onClick={() => handleDelete(product.id)}
-                  className="inline-flex items-center px-3 py-2 bg-red-600 text-gray-800 text-sm font-medium rounded-md hover:bg-red-700"
+                  className="inline-flex items-center px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700"
                 >
                   刪除
                 </button>
@@ -303,22 +291,6 @@ export default function Store() {
                   type="number"
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={formData.price}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="image_url"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  圖片網址
-                </label>
-                <input
-                  id="image_url"
-                  name="image_url"
-                  type="text"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={formData.image_url}
                   onChange={handleInputChange}
                 />
               </div>
