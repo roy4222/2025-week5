@@ -17,7 +17,7 @@ interface AddProductDialogProps {
 
 /**
  * 新增產品對話框組件
- * 提供表單輸入並處理產品新增邏輯
+ * 提供表單輸入、處理產品新增邏輯
  */
 export default function AddProductDialog({
   open,
