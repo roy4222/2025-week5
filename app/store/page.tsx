@@ -43,7 +43,7 @@ export default function Store() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // [修改] 將 'products' 改為 'store'
+      // [修改] 將 'products' 改為 'store!!!'
       const { data, error } = await supabase
         .from("store")
         .select("*")
